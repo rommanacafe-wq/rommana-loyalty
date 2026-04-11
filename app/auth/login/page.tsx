@@ -7,8 +7,14 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { Coffee } from 'lucide-react'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 import { RommanaRound } from '@/components/rommana-round'
 
 export default function LoginPage() {
@@ -16,10 +22,11 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+
   const router = useRouter()
   const supabase = createClient()
 
-  async function handleLogin(e: React.FormEvent) {
+  async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setLoading(true)
     setError(null)
@@ -40,19 +47,21 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-secondary/30 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-secondary/30 px-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary">
-                      <div className="flex items-center gap-3">
-              <div className="rounded-xl bg-[#620B0B] p-2 shadow-sm">
-                <RommanaRound size={50} variant="bare" />
-              </div>
-              </div>
-              </div>
-          <CardTitle className="text-2xl font-serif">Welcome Back</CardTitle>
-          <CardDescription>Sign in to your Rommana Rewards account</CardDescription>
+          <div className="mx-auto mb-4 flex items-center justify-center">
+            <div className="rounded-xl bg-[#620B0B] p-2 shadow-sm">
+              <RommanaRound size={50} variant="bare" />
+            </div>
+          </div>
+
+          <CardTitle className="font-serif text-2xl">Welcome Back</CardTitle>
+          <CardDescription>
+            Sign in to your Rommana Rewards account
+          </CardDescription>
         </CardHeader>
+
         <form onSubmit={handleLogin}>
           <CardContent className="space-y-4">
             {error && (
@@ -60,6 +69,7 @@ export default function LoginPage() {
                 {error}
               </div>
             )}
+
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -71,8 +81,18 @@ export default function LoginPage() {
                 required
               />
             </div>
+
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Password</Label>
+                <Link
+                  href="/auth/forgot-password/page"
+                  className="text-sm font-medium text-[#620B0B] hover:underline"
+                >
+                  Forgot your password?
+                </Link>
+              </div>
+
               <Input
                 id="password"
                 type="password"
@@ -83,13 +103,18 @@ export default function LoginPage() {
               />
             </div>
           </CardContent>
+
           <CardFooter className="flex flex-col gap-4">
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Signing in...' : 'Sign In'}
             </Button>
-            <p className="text-sm text-muted-foreground text-center">
+
+            <p className="text-center text-sm text-muted-foreground">
               Don&apos;t have an account?{' '}
-              <Link href="/auth/sign-up" className="text-primary hover:underline font-medium">
+              <Link
+                href="/auth/sign-up"
+                className="font-medium text-primary hover:underline"
+              >
                 Sign up
               </Link>
             </p>
