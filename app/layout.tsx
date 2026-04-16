@@ -7,33 +7,30 @@ const _inter = Inter({ subsets: ["latin"] });
 const _playfair = Playfair_Display({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
-<head>
-  <link rel="manifest" href="/manifest.json" />
-<meta name="theme-color" content="#620b0b" />
-<link rel="icon" href="/icon-192.png" />
-<meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="default" />
-</head>
+
 export const metadata: Metadata = {
-  title: 'Rommana Rewards - Cafe Loyalty Program',
+  title: 'Rommana Rewards',
   description: 'Earn points with every purchase at Rommana Cafe. Redeem for free drinks, pastries, and more. Join our loyalty program today!',
-  generator: 'v0.app',
+manifest: '/manifest.json',
   icons: {
     icon: [
       {
         url: '/icon-192.png',
-        media: '(prefers-color-scheme: light)',
+        sizes: '192x192',
+        type: 'image/png',
       },
       {
-        url: '/icon-192.png',
-        media: '(prefers-color-scheme: dark)',
+        url: '/icon-152.png',
+        sizes: '152x152',
+        type: 'image/png',
       },
       {
         url: '/icon.svg',
         type: 'image/svg+xml',
       },
     ],
-    apple: '/icon-192.png',
+    apple: '/apple-touch-icon.png',
+    shortcut: '/icon-192.png',
   },
 }
 
