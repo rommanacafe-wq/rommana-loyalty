@@ -75,6 +75,14 @@ export async function POST() {
     if (!prize) {
       return NextResponse.json({ winner: false })
     }
+    await supabase
+  .from('giveaway_claims')
+  .update({
+    reward_type: prize.reward_type,
+    reward_title: prize.title,
+  })
+  .eq('user_id', userId)
+  .eq('campaign', CAMPAIGN) 
 
     const currentQty = Number(prize.quantity_remaining)
 
@@ -133,8 +141,10 @@ export async function POST() {
         status: 'available',
         reward_type: prize.reward_type,
         campaign: CAMPAIGN,
-        reward_source: 'signup_giveaway',
+        reward_source: 'signup_giveaway', 
       })
+
+    
     }
 
     return NextResponse.json({
