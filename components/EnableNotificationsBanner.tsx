@@ -34,7 +34,7 @@ export default function EnableNotificationsBanner() {
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm text-[#620b0b]/70">Stay Updated</p>
-          <p className="font-semibold">Enable notifications</p>
+          <p className="font-semibold">Enable notifications to receive exlusive offers!</p>
         </div>
 
         <button
