@@ -2,8 +2,8 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { NavHeader } from '@/components/nav-header'
 import { Noto_Naskh_Arabic } from 'next/font/google'
-import OneSignalInit
- from '@/components/OneSignalInit'
+import OneSignalInit from '@/components/OneSignalInit'
+
 const notoNaskhArabic = Noto_Naskh_Arabic({
   subsets: ['arabic'],
   weight: ['400', '500', '600', '700'],
