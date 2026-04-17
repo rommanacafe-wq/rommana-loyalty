@@ -2,26 +2,42 @@
 
 import { useEffect } from 'react'
 
-export default function OneSignalInit() {
+type Props = {
+  externalId?: string
+}
+
+declare global {
+  interface Window {
+    OneSignalDeferred?: Array<(OneSignal: any) => void>
+    __onesignalInitialized?: boolean
+  }
+}
+
+export default function OneSignalInit({ externalId }: Props) {
   useEffect(() => {
     if (typeof window === 'undefined') return
 
-    // @ts-ignore
     window.OneSignalDeferred = window.OneSignalDeferred || []
 
-    // @ts-ignore
     window.OneSignalDeferred.push(async function (OneSignal) {
+      if (window.__onesignalInitialized) return
+      window.__onesignalInitialized = true
+
       await OneSignal.init({
         appId: 'f82ff25f-3ee6-4aee-a160-fc3cf4b419a4',
         safari_web_id: 'web.onesignal.auto.37a4bd23-e633-4ae3-9e22-29e91fb790d4',
         notifyButton: { enable: false },
-        allowLocalhostAsSecureOrigin: true,
         serviceWorkerPath: '/OneSignalSDKWorker.js',
       })
 
+      if (externalId) {
+        await OneSignal.login(externalId)
+        console.log('OneSignal logged in:', externalId)
+      }
+
       console.log('OneSignal initialized')
     })
-  }, [])
+  }, [externalId])
 
   return null
 }
