@@ -7,6 +7,7 @@ import { BirthdayBanner } from '@/components/birthday-banner'
 import { RommanaRound } from '@/components/rommana-round'
 import AnniversaryGiveawayBanner from '@/components/AnniversaryGiveawayBanner'
 import EnableNotificationsBanner from '@/components/EnableNotificationsBanner'
+
 export default async function DashboardPage() {
   const supabase = await createClient()
 
