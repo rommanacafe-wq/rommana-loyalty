@@ -2,7 +2,6 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { NavHeader } from '@/components/nav-header'
 import { Noto_Naskh_Arabic } from 'next/font/google'
-import OneSignalInit from '@/components/OneSignalInit'
 
 const notoNaskhArabic = Noto_Naskh_Arabic({
   subsets: ['arabic'],
@@ -35,7 +34,6 @@ export default async function ProtectedLayout({
 
   return (
     <div className={`${notoNaskhArabic.variable} min-h-screen flex flex-col bg-background`}>
-      <OneSignalInit externalId={user.id} />
       <NavHeader userName={userName} />
       <main className="flex-1">{children}</main>
     </div>

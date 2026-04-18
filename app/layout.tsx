@@ -3,7 +3,6 @@ import { Inter, Playfair_Display, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import Script from 'next/script'
-import OneSignalInit from '@/components/OneSignalInit'
 
 const _inter = Inter({ subsets: ['latin'] })
 const _playfair = Playfair_Display({ subsets: ['latin'] })
@@ -46,13 +45,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="font-sans antialiased">
-  <Script id="onesignal-sdk"
-    src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js"
-    strategy="afterInteractive"
-  />
-  <OneSignalInit />
-  {children}
-  {process.env.NODE_ENV === 'production' && <Analytics />}
+
 </body>
     </html>
   )

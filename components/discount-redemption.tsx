@@ -22,10 +22,14 @@ interface DiscountRedemptionProps {
   userId: string
 }
 
-const POINTS_PER_DOLLAR = 20 // 100 points = $5 off
+const POINTS_PER_DOLLAR = 20 // 20 points = $1 off
 const MIN_POINTS = 50
+const STEP_POINTS = 50
 
-export function DiscountRedemption({ userPoints, userId }: DiscountRedemptionProps) {
+export function DiscountRedemption({
+  userPoints,
+  userId,
+}: DiscountRedemptionProps) {
   const [pointsToRedeem, setPointsToRedeem] = useState(MIN_POINTS)
   const [showConfirm, setShowConfirm] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -34,30 +38,41 @@ export function DiscountRedemption({ userPoints, userId }: DiscountRedemptionPro
   const router = useRouter()
   const supabase = createClient()
 
-  const discountAmount = (pointsToRedeem / POINTS_PER_DOLLAR).toFixed(2)
   const canRedeem = userPoints >= MIN_POINTS
-  const maxPoints = Math.floor(userPoints / 100) * 100 // Round down to nearest 100
+  const maxPoints = userPoints
+  const safePointsToRedeem = Math.min(Math.max(pointsToRedeem, MIN_POINTS), maxPoints)
+  const discountAmount = (safePointsToRedeem / POINTS_PER_DOLLAR).toFixed(2)
 
   function adjustPoints(delta: number) {
     const newValue = pointsToRedeem + delta
-    if (newValue >= MIN_POINTS && newValue <= maxPoints) {
-      setPointsToRedeem(newValue)
+    const clamped = Math.min(Math.max(newValue, MIN_POINTS), maxPoints)
+    setPointsToRedeem(clamped)
+  }
+
+  function handleInputChange(value: string) {
+    if (value === '') {
+      setPointsToRedeem(MIN_POINTS)
+      return
     }
+
+    const parsed = parseInt(value, 10)
+    if (isNaN(parsed)) return
+
+    const clamped = Math.min(Math.max(parsed, MIN_POINTS), maxPoints)
+    setPointsToRedeem(clamped)
   }
 
   async function handleRedeem() {
     setLoading(true)
 
-    // Generate redemption code
     const code = `DISC-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
     const expiresAt = new Date()
-    expiresAt.setDate(expiresAt.getDate() + 30) // Valid for 30 days
+    expiresAt.setDate(expiresAt.getDate() + 30)
 
-    // Create redemption record (no reward_id for discount redemptions)
     const { error: redemptionError } = await supabase.from('redemptions').insert({
       user_id: userId,
       reward_id: null,
-      points_spent: pointsToRedeem,
+      points_spent: safePointsToRedeem,
       redemption_code: code,
       status: 'pending',
       expires_at: expiresAt.toISOString(),
@@ -68,11 +83,10 @@ export function DiscountRedemption({ userPoints, userId }: DiscountRedemptionPro
       return
     }
 
-    // Update user points
     const { error: updateError } = await supabase
       .from('profiles')
       .update({
-        points_balance: userPoints - pointsToRedeem,
+        points_balance: userPoints - safePointsToRedeem,
       })
       .eq('id', userId)
 
@@ -101,54 +115,58 @@ export function DiscountRedemption({ userPoints, userId }: DiscountRedemptionPro
             Convert Points to Discount
           </CardTitle>
           <CardDescription>
-            100 points = $5 off your purchase
+            20 points = $1 off your purchase
           </CardDescription>
         </CardHeader>
+
         <CardContent className="space-y-6">
           {canRedeem ? (
             <>
               <div className="space-y-2">
                 <Label>Points to redeem</Label>
+
                 <div className="flex items-center gap-3">
                   <Button
                     variant="outline"
                     size="icon"
-                    onClick={() => adjustPoints(-100)}
+                    onClick={() => adjustPoints(-STEP_POINTS)}
                     disabled={pointsToRedeem <= MIN_POINTS}
+                    type="button"
                   >
                     <Minus className="h-4 w-4" />
                   </Button>
+
                   <Input
                     type="number"
                     value={pointsToRedeem}
-                    onChange={(e) => {
-                      const value = parseInt(e.target.value)
-                      if (!isNaN(value) && value >= MIN_POINTS && value <= maxPoints) {
-                        setPointsToRedeem(Math.floor(value / 100) * 100)
-                      }
-                    }}
+                    onChange={(e) => handleInputChange(e.target.value)}
                     className="text-center text-lg font-semibold"
-                    step={100}
+                    step={STEP_POINTS}
                     min={MIN_POINTS}
                     max={maxPoints}
                   />
+
                   <Button
                     variant="outline"
                     size="icon"
-                    onClick={() => adjustPoints(100)}
+                    onClick={() => adjustPoints(STEP_POINTS)}
                     disabled={pointsToRedeem >= maxPoints}
+                    type="button"
                   >
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
+
                 <p className="text-xs text-muted-foreground text-center">
-                  Max: {maxPoints} points (${(maxPoints / POINTS_PER_DOLLAR).toFixed(2)} off)
+                  Min: {MIN_POINTS} points • Max: {maxPoints} points (${(maxPoints / POINTS_PER_DOLLAR).toFixed(2)} off)
                 </p>
               </div>
 
               <div className="bg-secondary/50 rounded-lg p-4 text-center">
                 <p className="text-sm text-muted-foreground">You&apos;ll get</p>
-                <p className="text-3xl font-bold text-primary">${discountAmount} off</p>
+                <p className="text-3xl font-bold text-primary">
+                  ${discountAmount} off
+                </p>
               </div>
 
               <Button className="w-full" onClick={() => setShowConfirm(true)}>
@@ -175,21 +193,24 @@ export function DiscountRedemption({ userPoints, userId }: DiscountRedemptionPro
               <DialogHeader>
                 <DialogTitle>Confirm Discount Redemption</DialogTitle>
                 <DialogDescription>
-                  You are about to redeem {pointsToRedeem} points
+                  You are about to redeem {safePointsToRedeem} points
                 </DialogDescription>
               </DialogHeader>
+
               <div className="py-4 text-center">
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 mb-4">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
                   <DollarSign className="h-8 w-8 text-primary" />
                 </div>
+
                 <p className="text-3xl font-bold text-primary">${discountAmount} off</p>
-                <p className="text-muted-foreground text-sm mt-2">
-                  Using {pointsToRedeem} points
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Using {safePointsToRedeem} points
                 </p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Remaining: {userPoints - pointsToRedeem} points
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Remaining: {userPoints - safePointsToRedeem} points
                 </p>
               </div>
+
               <DialogFooter className="gap-2 sm:gap-0">
                 <Button variant="outline" onClick={handleClose}>
                   Cancel
@@ -211,21 +232,26 @@ export function DiscountRedemption({ userPoints, userId }: DiscountRedemptionPro
               <DialogHeader>
                 <DialogTitle className="text-center">Discount Created!</DialogTitle>
               </DialogHeader>
+
               <div className="py-6 text-center">
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-accent mb-4">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-accent">
                   <Check className="h-8 w-8 text-accent-foreground" />
                 </div>
-                <p className="text-3xl font-bold text-primary mb-2">${discountAmount} off</p>
-                <p className="text-sm text-muted-foreground mb-4">
+
+                <p className="mb-2 text-3xl font-bold text-primary">${discountAmount} off</p>
+                <p className="mb-4 text-sm text-muted-foreground">
                   Show this code at checkout:
                 </p>
-                <p className="text-2xl font-mono font-bold bg-secondary px-4 py-2 rounded-lg inline-block">
+
+                <p className="inline-block rounded-lg bg-secondary px-4 py-2 text-2xl font-mono font-bold">
                   {redemptionCode}
                 </p>
-                <p className="text-xs text-muted-foreground mt-4">
+
+                <p className="mt-4 text-xs text-muted-foreground">
                   Valid for 30 days
                 </p>
               </div>
+
               <DialogFooter>
                 <Button onClick={handleClose} className="w-full">
                   Done

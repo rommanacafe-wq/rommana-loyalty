@@ -6,7 +6,6 @@ import QRCode from 'react-qr-code'
 import { BirthdayBanner } from '@/components/birthday-banner'
 import { RommanaRound } from '@/components/rommana-round'
 import AnniversaryGiveawayBanner from '@/components/AnniversaryGiveawayBanner'
-import EnableNotificationsBanner from '@/components/EnableNotificationsBanner'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -103,7 +102,6 @@ export default async function DashboardPage() {
         )}
 
         <AnniversaryGiveawayBanner />
-        <EnableNotificationsBanner />
 
         <section className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
           <div className="rommana-premium relative overflow-hidden rounded-[32px] p-6 md:p-8">
