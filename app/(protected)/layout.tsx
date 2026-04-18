@@ -8,6 +8,7 @@ const notoNaskhArabic = Noto_Naskh_Arabic({
   weight: ['400', '500', '600', '700'],
   variable: '--font-arabic',
 })
+
 export default async function ProtectedLayout({
   children,
 }: {
@@ -38,5 +39,4 @@ export default async function ProtectedLayout({
       <main className="flex-1">{children}</main>
     </div>
   )
-  
 }

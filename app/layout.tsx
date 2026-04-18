@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from 'next'
 import { Inter, Playfair_Display, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
-import Script from 'next/script'
 
 const _inter = Inter({ subsets: ['latin'] })
 const _playfair = Playfair_Display({ subsets: ['latin'] })
@@ -45,8 +44,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="font-sans antialiased">
-
-</body>
+        {children}
+        {process.env.NODE_ENV === 'production' && <Analytics />}
+      </body>
     </html>
   )
 }

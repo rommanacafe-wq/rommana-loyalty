@@ -24,7 +24,7 @@ interface DiscountRedemptionProps {
 
 const POINTS_PER_DOLLAR = 20 // 20 points = $1 off
 const MIN_POINTS = 50
-const STEP_POINTS = 50
+const STEP_POINTS = 10
 
 export function DiscountRedemption({
   userPoints,
