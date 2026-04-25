@@ -12,28 +12,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing search term' }, { status: 400 })
     }
 
-    const cleanedPhone = search.replace(/\D/g, '')
-
-    const filters = [
-      `first_name.ilike.%${search}%`,
-      `last_name.ilike.%${search}%`,
-      `email.ilike.%${search}%`,
-      `loyalty_code.ilike.%${search}%`,
-    ]
-
-    if (cleanedPhone) {
-      filters.push(`phone.ilike.%${cleanedPhone}%`)
-    }
-
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, first_name, last_name, email, phone, points_balance, loyalty_code')
-      .or(filters.join(','))
-      .order('first_name', { ascending: true })
+      .select('id, first_name, last_name, email, points_balance, loyalty_code')
+      .or(
+        `first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%,loyalty_code.ilike.%${search}%`
+      )
       .limit(20)
-console.log('SEARCH TERM:', search)
-console.log('SEARCH RESULTS:', data)
-console.log('SEARCH ERROR:', error)
+
+    console.log('SEARCH TERM:', search)
+    console.log('SEARCH RESULTS:', data)
+    console.log('SEARCH ERROR:', error)
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
@@ -45,7 +34,6 @@ console.log('SEARCH ERROR:', error)
         name:
           `${row.first_name || ''} ${row.last_name || ''}`.trim() ||
           row.email ||
-          row.phone ||
           'Unnamed Member',
         points: row.points_balance || 0,
         loyaltyCode: row.loyalty_code || '',
