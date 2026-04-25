@@ -618,7 +618,7 @@ export default function StaffPage() {
                 <input
                   value={amountSpent}
                   onChange={(e) => setAmountSpent(e.target.value)}
-                  placeholder="Enter amount spent (e.g. 12.50)"
+                  placeholder="Enter amount spent before tax & tip (e.g. 12.50)"
                   className="w-full rounded-2xl border border-[#620b0b]/15 px-4 py-3 outline-none focus:border-[#620b0b]"
                 />
 
