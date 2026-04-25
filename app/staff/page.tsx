@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
+
 
 type ScanResult = {
   userId?: string
@@ -55,6 +57,8 @@ export default function StaffPage() {
   const [rewards, setRewards] = useState<CustomerReward[]>([])
   const [loadingRewards, setLoadingRewards] = useState(false)
   const [rewardActionMessage, setRewardActionMessage] = useState('')
+
+  
 
   function parseQrPayload(decodedText: string): ScanResult | null {
     const raw = decodedText.trim()
@@ -466,6 +470,12 @@ export default function StaffPage() {
             <p className="mt-2 text-sm text-[#4d3f38]">
               Scan customer QR codes, look up by loyalty code or first name, add points, or redeem rewards.
             </p>
+            <Link
+      href="/dashboard"
+      className="rounded-2xl border border-[#620b0b]/15 px-5 py-3 text-center font-medium text-[#620b0b] transition hover:bg-[#f8f5f0]"
+    >
+      Back to Dashboard
+    </Link>
           </div>
         </div>
 

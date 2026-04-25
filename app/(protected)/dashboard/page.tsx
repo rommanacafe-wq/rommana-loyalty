@@ -24,6 +24,12 @@ export default async function DashboardPage() {
     .eq('id', user.id)
     .single()
 
+    const { data: isStaff } = await supabase
+  .from('staff_users')
+  .select('user_id')
+  .eq('user_id', user.id)
+  .maybeSingle()
+
   const firstName = profile?.first_name || ''
   const lastName = profile?.last_name || ''
   const memberName = `${firstName} ${lastName}`.trim() || user.email || 'Guest'
@@ -218,13 +224,15 @@ export default async function DashboardPage() {
                   </span>
                   <ArrowRight className="h-4 w-4 text-[#620b0b]" />
                 </Link>
-                <Link
-  href="/staff"
-  className="inline-flex items-center justify-between rounded-2xl border border-[#620b0b]/10 bg-[#620b0b] px-4 py-4 transition hover:bg-[#4d0909]"
->
-  <span className="font-medium text-white">Staff Dashboard</span>
-  <ArrowRight className="h-4 w-4 text-white" />
-</Link>
+                {isStaff && (
+  <Link
+    href="/staff"
+    className="inline-flex items-center justify-between rounded-2xl border border-[#620b0b]/10 bg-[#620b0b] px-4 py-4 transition hover:bg-[#4d0909]"
+  >
+    <span className="font-medium text-white">Staff Dashboard</span>
+    <ArrowRight className="h-4 w-4 text-white" />
+  </Link>
+)}
               </div>
             </div>
 
