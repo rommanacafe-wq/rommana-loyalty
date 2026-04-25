@@ -156,7 +156,7 @@ export default function LandingPage() {
         <div className="mx-auto max-w-6xl">
           <div className="mb-12 text-center">
             <p className="text-sm uppercase tracking-[0.2em] text-[#620b0b]/70">
-              Rewards You'll Love
+              Rewards You&apos;ll Love
             </p>
             <h3 className="mt-3 font-serif text-4xl font-bold text-[#2f241f]">
               Inspired by every visit

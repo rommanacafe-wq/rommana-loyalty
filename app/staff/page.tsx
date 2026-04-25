@@ -331,52 +331,60 @@ export default function StaffPage() {
   }
 
   async function handleRedeemFromCustomer(reward: CustomerReward) {
-    try {
-      let res: Response
+  try {
+    let res: Response
 
-      if (reward.source === 'redemptions') {
-        if (!reward.redemption_code) {
-          setRewardActionMessage('❌ Reward does not have a redemption code')
-          return
-        }
-
-        res = await fetch('/api/rewards/redeem', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            code: reward.redemption_code,
-          }),
-        })
-      } else if (reward.source === 'user_rewards') {
-        res = await fetch('/api/staff/redeem-user-reward', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            rewardId: reward.id,
-          }),
-        })
-      } else {
-        setRewardActionMessage('❌ Unknown reward type')
+    if (reward.source === 'redemptions') {
+      if (!reward.redemption_code) {
+        setRewardActionMessage('❌ Reward does not have a redemption code')
         return
       }
 
-      const data = await res.json()
-
-      if (!res.ok) {
-        setRewardActionMessage(`❌ ${data.error || 'Redeem failed'}`)
-        return
-      }
-
-      setRewardActionMessage('✅ Reward redeemed successfully')
-
-      if (customer?.id) {
-        await fetchCustomerRewards(customer.id)
-      }
-    } catch (error) {
-      console.error('Redeem from customer error:', error)
-      setRewardActionMessage('❌ Failed to redeem reward')
+      res = await fetch('/api/rewards/redeem', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: reward.redemption_code,
+        }),
+      })
+    } else if (reward.source === 'user_rewards') {
+      res = await fetch('/api/staff/redeem-user-reward', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rewardId: reward.id,
+        }),
+      })
+    } else {
+      setRewardActionMessage('❌ Unknown reward type')
+      return
     }
+
+    const text = await res.text()
+    let data: any = null
+
+    try {
+      data = text ? JSON.parse(text) : {}
+    } catch {
+      setRewardActionMessage('❌ API did not return valid JSON')
+      return
+    }
+
+    if (!res.ok) {
+      setRewardActionMessage(`❌ ${data.error || 'Redeem failed'}`)
+      return
+    }
+
+    setRewardActionMessage('✅ Reward redeemed successfully')
+
+    if (customer?.id) {
+      await fetchCustomerRewards(customer.id)
+    }
+  } catch (error) {
+    console.error('Redeem from customer error:', error)
+    setRewardActionMessage('❌ Failed to redeem reward')
   }
+}
 
   async function handleAddPoints() {
     if (!customer?.id || !amountSpent.trim()) return
