@@ -31,6 +31,9 @@ export async function POST(req: Request) {
       .or(filters.join(','))
       .order('first_name', { ascending: true })
       .limit(20)
+console.log('SEARCH TERM:', search)
+console.log('SEARCH RESULTS:', data)
+console.log('SEARCH ERROR:', error)
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
