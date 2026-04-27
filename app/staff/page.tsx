@@ -92,20 +92,29 @@ export default function StaffPage() {
   }
 
   async function loadCustomer(payload: ScanResult) {
-    const res = await fetch('/api/staff/customer', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
+  const res = await fetch('/api/staff/customer', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
 
-    const data = await res.json()
+  const text = await res.text()
 
-    if (!res.ok) {
-      throw new Error(data.error || 'Customer not found')
-    }
+  let data: any = null
 
-    return data as Customer
+  try {
+    data = text ? JSON.parse(text) : {}
+  } catch {
+    console.error('Invalid JSON from /api/staff/customer:', text)
+    throw new Error('Customer lookup API returned invalid response')
   }
+
+  if (!res.ok) {
+    throw new Error(data.error || 'Customer not found')
+  }
+
+  return data as Customer
+}
 
   async function fetchCustomerRewards(userId: string) {
     setLoadingRewards(true)
@@ -463,21 +472,18 @@ export default function StaffPage() {
       <div className="mx-auto max-w-5xl space-y-6">
         <div className="rounded-3xl border border-[#620b0b]/10 bg-white p-6 shadow-sm">
           <div className="text-center">
-            <p className="text-sm uppercase tracking-[0.2em] text-[#620b0b]/70">
+            <p className="text-sm uppercase tracking-[0.3em] text-[#620b0b]/70">
               Staff Dashboard
             </p>
-            <h1 className="mt-2 text-3xl font-semibold">Scan or Lookup</h1>
+            <h1 className="mt-2 text-3xl font-semibold">Scan or Lookup </h1>
             <p className="mt-2 text-sm text-[#4d3f38]">
               Scan customer QR codes, look up by loyalty code or first name, add points, or redeem rewards.
             </p>
-            <Link
-      href="/dashboard"
-      className="rounded-2xl border border-[#620b0b]/15 px-5 py-3 text-center font-medium text-[#620b0b] transition hover:bg-[#f8f5f0]"
-    >
-      Back to Dashboard
-    </Link>
+            
           </div>
+          
         </div>
+        
 
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="space-y-4 rounded-3xl border border-[#620b0b]/10 bg-white p-6 shadow-sm lg:col-span-2">
@@ -690,6 +696,11 @@ export default function StaffPage() {
           >
             Clear Customer
           </button>
+          <Link href="/dashboard"
+      className="rounded-2xl border border-[#620b0b]/15 px-5 py-3 text-center font-medium text-[#620b0b] transition hover:bg-[#f8f5f0]"
+    >
+      Back to Dashboard
+    </Link>
         </div>
 
         <div className="space-y-4 rounded-3xl border border-[#620b0b]/10 bg-white p-6 shadow-sm">
