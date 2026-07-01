@@ -27,6 +27,20 @@ type CustomerReward = {
   reward_type?: string | null
 }
 
+type RewardCatalogItem = {
+  id: string
+  title: string
+  description?: string | null
+  points_required: number
+  category?: string | null
+}
+type CustomerHistory = {
+  purchases: any[]
+  redemptions: any[]
+}
+
+
+
 export default function StaffPage() {
   const qrRef = useRef<any>(null)
 
@@ -58,7 +72,16 @@ export default function StaffPage() {
   const [loadingRewards, setLoadingRewards] = useState(false)
   const [rewardActionMessage, setRewardActionMessage] = useState('')
 
-  
+  const [catalogRewards, setCatalogRewards] = useState<RewardCatalogItem[]>([])
+const [loadingCatalogRewards, setLoadingCatalogRewards] = useState(false)
+const [pointsRedeemMessage, setPointsRedeemMessage] = useState('')
+const [redeemingPointsRewardId, setRedeemingPointsRewardId] = useState<string | null>(null)
+
+const [history, setHistory] = useState<CustomerHistory | null>(null)
+const [loadingHistory, setLoadingHistory] = useState(false)
+const [historyMessage, setHistoryMessage] = useState('')
+const [visiblePurchases, setVisiblePurchases] = useState(5)
+const [visibleRedemptions, setVisibleRedemptions] = useState(5)
 
   function parseQrPayload(decodedText: string): ScanResult | null {
     const raw = decodedText.trim()
@@ -115,7 +138,76 @@ export default function StaffPage() {
 
   return data as Customer
 }
+async function fetchCustomerHistory() {
+  if (!customer?.id) {
+    setHistoryMessage('❌ No customer selected')
+    return
+  }
 
+  setLoadingHistory(true)
+  setHistoryMessage('')
+
+  try {
+    const res = await fetch('/api/staff/customer-history', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: customer.id }),
+    })
+
+    const text = await res.text()
+    let data: any = null
+
+    try {
+      data = text ? JSON.parse(text) : {}
+    } catch {
+      console.error('Customer history invalid response:', text)
+      setHistoryMessage('❌ History API returned invalid response')
+      return
+    }
+
+    if (!res.ok) {
+      setHistoryMessage(`❌ ${data.error || 'Failed to load history'}`)
+      return
+    }
+setVisiblePurchases(5)
+setVisibleRedemptions(5)
+    setHistory(data)
+    setHistoryMessage('✅ History loaded')
+  } catch (error) {
+    console.error('Customer history error:', error)
+    setHistoryMessage('❌ Failed to load history')
+  } finally {
+    setLoadingHistory(false)
+  }
+}
+async function fetchRewardCatalog() {
+  setLoadingCatalogRewards(true)
+
+  try {
+    const res = await fetch('/api/staff/reward-catalog')
+    const text = await res.text()
+
+    let data: RewardCatalogItem[] = []
+
+    try {
+      data = text ? JSON.parse(text) : []
+    } catch {
+      setCatalogRewards([])
+      return
+    }
+
+    if (!res.ok) {
+      setCatalogRewards([])
+      return
+    }
+
+    setCatalogRewards(data || [])
+  } catch {
+    setCatalogRewards([])
+  } finally {
+    setLoadingCatalogRewards(false)
+  }
+}
   async function fetchCustomerRewards(userId: string) {
     setLoadingRewards(true)
     setRewardActionMessage('')
@@ -151,8 +243,57 @@ export default function StaffPage() {
       loyaltyCode: customerData.loyaltyCode,
     })
     await fetchCustomerRewards(customerData.id)
+    await fetchRewardCatalog()
   }
+async function handleRedeemPointsReward(reward: RewardCatalogItem) {
+  if (!customer?.id) return
 
+  setRedeemingPointsRewardId(reward.id)
+  setPointsRedeemMessage('')
+
+  try {
+    const res = await fetch('/api/staff/redeem-points-reward', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: customer.id,
+        rewardId: reward.id,
+      }),
+    })
+
+    const text = await res.text()
+    let data: any = null
+
+    try {
+      data = text ? JSON.parse(text) : {}
+    } catch {
+      setPointsRedeemMessage('❌ API did not return valid JSON')
+      return
+    }
+
+    if (!res.ok) {
+      setPointsRedeemMessage(`❌ ${data.error || 'Failed to redeem reward'}`)
+      return
+    }
+
+    setCustomer((prev) =>
+      prev
+        ? {
+            ...prev,
+            points: data.newPointsBalance,
+          }
+        : prev
+    )
+
+    setPointsRedeemMessage(
+      `✅ Redeemed ${data.rewardTitle} for ${data.pointsDeducted} points`
+    )
+  } catch {
+    setPointsRedeemMessage('❌ Failed to redeem reward')
+  } finally {
+    setRedeemingPointsRewardId(null)
+  }
+}
   async function handleScan(decodedText: string) {
     try {
       const parsed = parseQrPayload(decodedText)
@@ -233,20 +374,24 @@ export default function StaffPage() {
   }
 
   async function handleSelectCustomer(selected: Customer) {
-    try {
-      setCustomer(selected)
-      setScanResult({
-        userId: selected.id,
-        loyaltyCode: selected.loyaltyCode,
-      })
-      await fetchCustomerRewards(selected.id)
-      setNameSearchMessage('Customer loaded successfully')
-    } catch (error) {
-      console.error(error)
-      setNameSearchMessage('❌ Failed to load customer rewards')
-    }
-  }
+  try {
+    setCustomer(selected)
+    setScanResult({
+      userId: selected.id,
+      loyaltyCode: selected.loyaltyCode,
+    })
 
+    await Promise.all([
+      fetchCustomerRewards(selected.id),
+      fetchRewardCatalog(),
+    ])
+
+    setNameSearchMessage('Customer loaded successfully')
+  } catch (error) {
+    console.error(error)
+    setNameSearchMessage('❌ Failed to load customer rewards')
+  }
+}
   async function startScanner() {
     if (isScanning || isStarting) return
 
@@ -450,16 +595,22 @@ export default function StaffPage() {
   }
 
   function handleClearCustomer() {
-    setScanResult(null)
-    setCustomer(null)
-    setRewards([])
-    setMessage('')
-    setLookupMessage('')
-    setNameSearchMessage('')
-    setNameResults([])
-    setPointsMessage('')
-    setRewardActionMessage('')
-  }
+  setScanResult(null)
+  setCustomer(null)
+  setRewards([])
+  setCatalogRewards([])
+  setMessage('')
+  setLookupMessage('')
+  setNameSearchMessage('')
+  setNameResults([])
+  setPointsMessage('')
+  setRewardActionMessage('')
+  setPointsRedeemMessage('')
+  setHistory(null)
+setHistoryMessage('')
+setVisiblePurchases(5)
+setVisibleRedemptions(5)
+}
 
   useEffect(() => {
     return () => {
@@ -683,19 +834,149 @@ export default function StaffPage() {
 
                 {rewardActionMessage && <p className="text-sm">{rewardActionMessage}</p>}
               </div>
+              <div className="space-y-3 rounded-2xl border border-[#620b0b]/10 bg-[#fffdf9] p-4">
+  <p className="font-medium text-[#2f241f]">Redeem With Points</p>
+
+  {loadingCatalogRewards && (
+    <p className="text-sm text-[#4d3f38]">Loading redeemable rewards...</p>
+  )}
+
+  {!loadingCatalogRewards && catalogRewards.length === 0 && (
+    <p className="text-sm text-[#4d3f38]">No point rewards available</p>
+  )}
+
+  {catalogRewards.map((reward) => {
+    const canRedeem = customer ? customer.points >= reward.points_required : false
+
+    return (
+      <div
+        key={reward.id}
+        className={`flex items-center justify-between rounded-2xl bg-white p-3 ${
+          !canRedeem ? 'opacity-60' : ''
+        }`}
+      >
+        <div>
+          <p className="font-medium text-[#2f241f]">{reward.title}</p>
+          {reward.description && (
+            <p className="text-sm text-[#4d3f38]">{reward.description}</p>
+          )}
+          <p className="mt-1 text-sm font-medium text-[#620b0b]">
+            {reward.points_required} points
+          </p>
+        </div>
+
+        <button
+          onClick={() => handleRedeemPointsReward(reward)}
+          disabled={!canRedeem || redeemingPointsRewardId === reward.id}
+          className="rounded-xl bg-[#620b0b] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+        >
+          {redeemingPointsRewardId === reward.id
+            ? 'Redeeming...'
+            : canRedeem
+              ? 'Redeem'
+              : 'Not enough'}
+        </button>
+      </div>
+    )
+  })}
+
+  {pointsRedeemMessage && <p className="text-sm">{pointsRedeemMessage}</p>}
+</div>
+
             </>
           ) : (
             <div className="rounded-2xl bg-[#f8f5f0] p-4 text-sm text-[#4d3f38]">
               Scan a customer QR code, enter a loyalty code, or search by first name to load their profile.
             </div>
           )}
-
           <button
             onClick={handleClearCustomer}
             className="rounded-2xl border border-[#620b0b]/15 px-5 py-3 font-medium text-[#620b0b]"
           >
             Clear Customer
           </button>
+          <button
+  type="button"
+  onClick={fetchCustomerHistory}
+  disabled={!customer || loadingHistory}
+  className="rounded-2xl bg-[#620b0b] px-5 py-3 font-medium text-white disabled:opacity-50"
+>
+  {loadingHistory ? 'Loading History...' : 'View History'}
+</button>
+{historyMessage && <p className="text-sm">{historyMessage}</p>}
+
+{history && (
+  <div className="space-y-4 rounded-2xl border border-[#620b0b]/10 bg-[#fffdf9] p-4">
+    <p className="font-medium text-[#2f241f]">Customer History</p>
+
+    <div>
+      <p className="mb-2 text-sm font-semibold text-[#620b0b]">Purchases / Points</p>
+
+      {history.purchases.length === 0 ? (
+        <p className="text-sm text-[#4d3f38]">No purchases yet</p>
+      ) : (
+        <div className="space-y-2">
+          {history.purchases.slice(0, visiblePurchases).map((item) => (
+            <div key={item.id} className="rounded-xl bg-white p-3 text-sm">
+              <p className="font-medium">{item.description || 'Purchase'}</p>
+              <p className="text-[#4d3f38]">
+                {new Date(item.created_at).toLocaleString()}
+              </p>
+              <p className="font-semibold text-[#620b0b]">
+                {item.points_earned >= 0 ? '+' : ''}
+                {item.points_earned || 0} pts
+              </p>
+            </div>
+          ))}
+          {history.purchases.length > visiblePurchases && (
+  <button
+    type="button"
+    onClick={() => setVisiblePurchases((prev) => prev + 5)}
+    className="mt-3 rounded-xl border border-[#620b0b]/15 px-4 py-2 text-sm font-medium text-[#620b0b]"
+  >
+    View More Purchases
+  </button>
+)}
+        </div>
+        
+      )}
+    </div>
+
+    <div>
+      <p className="mb-2 text-sm font-semibold text-[#620b0b]">Redemptions</p>
+
+      {history.redemptions.length === 0 ? (
+        <p className="text-sm text-[#4d3f38]">No redemptions yet</p>
+      ) : (
+        <div className="space-y-2">
+          {history.redemptions.slice(0, visibleRedemptions).map((item) => (
+            <div key={item.id} className="rounded-xl bg-white p-3 text-sm">
+              <p className="font-medium">
+                {item.title || item.reward_name || 'Reward'}
+              </p>
+              <p className="text-[#4d3f38]">
+                {new Date(item.redeemed_at || item.created_at).toLocaleString()}
+              </p>
+              <p className="font-semibold text-[#620b0b]">
+                {item.points_spent ? `-${item.points_spent} pts` : 'Redeemed'}
+              </p>
+              {history.redemptions.length > visibleRedemptions && (
+  <button
+    type="button"
+    onClick={() => setVisibleRedemptions((prev) => prev + 5)}
+    className="mt-3 rounded-xl border border-[#620b0b]/15 px-4 py-2 text-sm font-medium text-[#620b0b]"
+  >
+    View More Redemptions
+  </button>
+)}
+            </div>
+            
+          ))}
+        </div>
+      )}
+    </div>
+  </div>
+)}
           <Link href="/dashboard"
       className="rounded-2xl border border-[#620b0b]/15 px-5 py-3 text-center font-medium text-[#620b0b] transition hover:bg-[#f8f5f0]"
     >
