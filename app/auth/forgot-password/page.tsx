@@ -9,19 +9,20 @@ export default function ForgotPasswordPage() {
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
 
-  async function handleReset(e: React.FormEvent<HTMLFormElement>) {
+    async function handleReset(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setLoading(true)
     setMessage('')
 
     const supabase = createClient()
 
-    const redirectUrl =
-  process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+    // Dynamically detect the production domain vs local machine
+    const isProd = process.env.NODE_ENV === 'production'
+    const baseUrl = isProd ? 'https://rommana.ca' : 'http://localhost:3000'
 
-const { error } = await supabase.auth.resetPasswordForEmail(email, {
-  redirectTo: `${redirectUrl}/auth/update-password`,
-})
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${baseUrl}/auth/update-password`,
+    })
 
     if (error) {
       setMessage(error.message)
