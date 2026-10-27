@@ -28,7 +28,6 @@ export async function POST(req: Request) {
 
     const pointsToAdd = Math.floor(amount)
 
-    // 1) verify customer exists
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('id, points_balance, total_points_earned')
@@ -39,7 +38,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Customer not found' }, { status: 404 })
     }
 
-    // 2) insert transaction
     const { error: transactionError } = await supabaseAdmin
       .from('transactions')
       .insert({
@@ -53,7 +51,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: transactionError.message }, { status: 500 })
     }
 
-    // 3) update profile directly with admin client
     const nextBalance = Number(profile.points_balance || 0) + pointsToAdd
     const nextTotal = Number(profile.total_points_earned || 0) + pointsToAdd
 
