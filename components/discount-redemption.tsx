@@ -1,3 +1,4 @@
+
 'use client'
 
 import { useState } from 'react'
@@ -22,7 +23,7 @@ interface DiscountRedemptionProps {
   userId: string
 }
 
-const POINTS_PER_DOLLAR = 20 // 20 points = $1 off
+const POINTS_PER_DOLLAR = 20
 const MIN_POINTS = 50
 const STEP_POINTS = 10
 
@@ -35,17 +36,27 @@ export function DiscountRedemption({
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [redemptionCode, setRedemptionCode] = useState<string | null>(null)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
   const router = useRouter()
   const supabase = createClient()
 
   const canRedeem = userPoints >= MIN_POINTS
   const maxPoints = userPoints
-  const safePointsToRedeem = Math.min(Math.max(pointsToRedeem, MIN_POINTS), maxPoints)
+
+  const safePointsToRedeem = Math.min(
+    Math.max(pointsToRedeem, MIN_POINTS),
+    maxPoints
+  )
+
   const discountAmount = (safePointsToRedeem / POINTS_PER_DOLLAR).toFixed(2)
 
   function adjustPoints(delta: number) {
     const newValue = pointsToRedeem + delta
-    const clamped = Math.min(Math.max(newValue, MIN_POINTS), maxPoints)
+    const clamped = Math.min(
+      Math.max(newValue, MIN_POINTS),
+      maxPoints
+    )
     setPointsToRedeem(clamped)
   }
 
@@ -58,51 +69,78 @@ export function DiscountRedemption({
     const parsed = parseInt(value, 10)
     if (isNaN(parsed)) return
 
-    const clamped = Math.min(Math.max(parsed, MIN_POINTS), maxPoints)
+    const clamped = Math.min(
+      Math.max(parsed, MIN_POINTS),
+      maxPoints
+    )
     setPointsToRedeem(clamped)
   }
 
   async function handleRedeem() {
-    setLoading(true)
+    if (loading || !canRedeem) return
 
-    const code = `DISC-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
-    const expiresAt = new Date()
-    expiresAt.setDate(expiresAt.getDate() + 30)
-
-    const { error: redemptionError } = await supabase.from('redemptions').insert({
-      user_id: userId,
-      reward_id: null,
-      points_spent: safePointsToRedeem,
-      redemption_code: code,
-      status: 'pending',
-      expires_at: expiresAt.toISOString(),
-    })
-
-    if (redemptionError) {
-      setLoading(false)
+    if (
+      !Number.isInteger(safePointsToRedeem) ||
+      safePointsToRedeem < MIN_POINTS ||
+      safePointsToRedeem > userPoints
+    ) {
+      setErrorMessage('Please choose a valid number of points.')
       return
     }
 
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({
-        points_balance: userPoints - safePointsToRedeem,
-      })
-      .eq('id', userId)
+    setLoading(true)
+    setErrorMessage(null)
 
-    setLoading(false)
+    try {
+      const code = `DISC-${Math.random()
+        .toString(36)
+        .substring(2, 8)
+        .toUpperCase()}`
 
-    if (!updateError) {
+      const expiresAt = new Date()
+      expiresAt.setDate(expiresAt.getDate() + 30)
+
+      const { error: redemptionError } = await supabase
+        .from('redemptions')
+        .insert({
+          user_id: userId,
+          reward_id: null,
+          points_spent: safePointsToRedeem,
+          redemption_code: code,
+          status: 'pending',
+          expires_at: expiresAt.toISOString(),
+        })
+
+      if (redemptionError) {
+        console.error('Discount redemption error:', redemptionError)
+        setErrorMessage(
+          redemptionError.message ||
+            'Unable to create your discount. Please try again.'
+        )
+        return
+      }
+
+      // Supabase's deduct_points_on_redemption trigger deducts the points.
+      // Do not update profiles.points_balance here.
+
       setSuccess(true)
       setRedemptionCode(code)
       router.refresh()
+    } catch (error) {
+      console.error('Unexpected redemption error:', error)
+      setErrorMessage('Something went wrong. Please try again.')
+    } finally {
+      setLoading(false)
     }
   }
 
   function handleClose() {
+    if (loading) return
+
     setShowConfirm(false)
     setSuccess(false)
     setRedemptionCode(null)
+    setErrorMessage(null)
     setPointsToRedeem(MIN_POINTS)
   }
 
@@ -130,7 +168,7 @@ export function DiscountRedemption({
                     variant="outline"
                     size="icon"
                     onClick={() => adjustPoints(-STEP_POINTS)}
-                    disabled={pointsToRedeem <= MIN_POINTS}
+                    disabled={loading || pointsToRedeem <= MIN_POINTS}
                     type="button"
                   >
                     <Minus className="h-4 w-4" />
@@ -144,13 +182,14 @@ export function DiscountRedemption({
                     step={STEP_POINTS}
                     min={MIN_POINTS}
                     max={maxPoints}
+                    disabled={loading}
                   />
 
                   <Button
                     variant="outline"
                     size="icon"
                     onClick={() => adjustPoints(STEP_POINTS)}
-                    disabled={pointsToRedeem >= maxPoints}
+                    disabled={loading || pointsToRedeem >= maxPoints}
                     type="button"
                   >
                     <Plus className="h-4 w-4" />
@@ -158,7 +197,8 @@ export function DiscountRedemption({
                 </div>
 
                 <p className="text-xs text-muted-foreground text-center">
-                  Min: {MIN_POINTS} points • Max: {maxPoints} points (${(maxPoints / POINTS_PER_DOLLAR).toFixed(2)} off)
+                  Min: {MIN_POINTS} points • Max: {maxPoints} points ($
+                  {(maxPoints / POINTS_PER_DOLLAR).toFixed(2)} off)
                 </p>
               </div>
 
@@ -169,7 +209,14 @@ export function DiscountRedemption({
                 </p>
               </div>
 
-              <Button className="w-full" onClick={() => setShowConfirm(true)}>
+              <Button
+                className="w-full"
+                onClick={() => {
+                  setErrorMessage(null)
+                  setShowConfirm(true)
+                }}
+                disabled={loading}
+              >
                 Redeem for ${discountAmount} Off
               </Button>
             </>
@@ -179,21 +226,28 @@ export function DiscountRedemption({
                 You need at least {MIN_POINTS} points to redeem a discount.
               </p>
               <p className="text-sm text-muted-foreground mt-2">
-                You have {userPoints} points. Earn {MIN_POINTS - userPoints} more!
+                You have {userPoints} points. Earn{' '}
+                {MIN_POINTS - userPoints} more!
               </p>
             </div>
           )}
         </CardContent>
       </Card>
 
-      <Dialog open={showConfirm} onOpenChange={handleClose}>
+      <Dialog
+        open={showConfirm}
+        onOpenChange={(open) => {
+          if (!open) handleClose()
+          else setShowConfirm(true)
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           {!success ? (
             <>
               <DialogHeader>
                 <DialogTitle>Confirm Discount Redemption</DialogTitle>
                 <DialogDescription>
-                  You are about to redeem {safePointsToRedeem} points
+                  You are about to redeem {safePointsToRedeem} points.
                 </DialogDescription>
               </DialogHeader>
 
@@ -202,7 +256,9 @@ export function DiscountRedemption({
                   <DollarSign className="h-8 w-8 text-primary" />
                 </div>
 
-                <p className="text-3xl font-bold text-primary">${discountAmount} off</p>
+                <p className="text-3xl font-bold text-primary">
+                  ${discountAmount} off
+                </p>
                 <p className="mt-2 text-sm text-muted-foreground">
                   Using {safePointsToRedeem} points
                 </p>
@@ -211,10 +267,21 @@ export function DiscountRedemption({
                 </p>
               </div>
 
+              {errorMessage && (
+                <p role="alert" className="text-sm text-destructive">
+                  {errorMessage}
+                </p>
+              )}
+
               <DialogFooter className="gap-2 sm:gap-0">
-                <Button variant="outline" onClick={handleClose}>
+                <Button
+                  variant="outline"
+                  onClick={handleClose}
+                  disabled={loading}
+                >
                   Cancel
                 </Button>
+
                 <Button onClick={handleRedeem} disabled={loading}>
                   {loading ? (
                     <>
@@ -230,7 +297,9 @@ export function DiscountRedemption({
           ) : (
             <>
               <DialogHeader>
-                <DialogTitle className="text-center">Discount Created!</DialogTitle>
+                <DialogTitle className="text-center">
+                  Discount Created!
+                </DialogTitle>
               </DialogHeader>
 
               <div className="py-6 text-center">
@@ -238,7 +307,9 @@ export function DiscountRedemption({
                   <Check className="h-8 w-8 text-accent-foreground" />
                 </div>
 
-                <p className="mb-2 text-3xl font-bold text-primary">${discountAmount} off</p>
+                <p className="mb-2 text-3xl font-bold text-primary">
+                  ${discountAmount} off
+                </p>
                 <p className="mb-4 text-sm text-muted-foreground">
                   Show this code at checkout:
                 </p>
