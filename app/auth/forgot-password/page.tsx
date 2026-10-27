@@ -18,7 +18,7 @@ export default function ForgotPasswordPage() {
 
     // Dynamically detect the production domain vs local machine
     const isProd = process.env.NODE_ENV === 'production'
-    const baseUrl = isProd ? 'https://rommana.ca' : 'http://localhost:3000'
+    const baseUrl = isProd ? 'https://rewards.rommana.ca' : 'http://localhost:3000'
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${baseUrl}/auth/update-password`,
