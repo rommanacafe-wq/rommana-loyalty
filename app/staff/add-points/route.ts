@@ -1,3 +1,4 @@
+
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
@@ -7,50 +8,99 @@ export async function POST(req: Request) {
     const { userId, amountSpent } = await req.json()
 
     if (!userId || amountSpent === undefined || amountSpent === null) {
-      return NextResponse.json({ error: 'Missing data' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'Missing data' },
+        { status: 400 }
+      )
     }
 
     const amount = Number(amountSpent)
 
-    if (Number.isNaN(amount) || amount <= 0) {
-      return NextResponse.json({ error: 'Invalid amount' }, { status: 400 })
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return NextResponse.json(
+        { error: 'Invalid amount' },
+        { status: 400 }
+      )
     }
 
     const pointsToAdd = Math.floor(amount)
 
+    if (pointsToAdd < 1) {
+      return NextResponse.json(
+        { error: 'Amount must earn at least 1 point' },
+        { status: 400 }
+      )
+    }
+
+    // Confirm the customer exists.
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('id, points_balance, total_points_earned')
+      .select('id')
       .eq('id', userId)
       .single()
 
     if (profileError || !profile) {
-      return NextResponse.json({ error: 'Customer not found' }, { status: 404 })
+      return NextResponse.json(
+        { error: 'Customer not found' },
+        { status: 404 }
+      )
     }
 
-    const newPointsBalance = (profile.points_balance || 0) + pointsToAdd
-    const newTotalEarned = (profile.total_points_earned || 0) + pointsToAdd
-
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({
-        points_balance: newPointsBalance,
-        total_points_earned: newTotalEarned,
+    // Insert one transaction.
+    // The Supabase trigger updates points_balance and
+    // total_points_earned automatically.
+    const { error: transactionError } = await supabase
+      .from('transactions')
+      .insert({
+        user_id: userId,
+        description: 'In-store purchase',
+        amount,
+        points_earned: pointsToAdd,
       })
-      .eq('id', userId)
 
-    if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 500 })
+    if (transactionError) {
+      console.error('ADD POINTS TRANSACTION ERROR:', transactionError)
+
+      return NextResponse.json(
+        { error: transactionError.message },
+        { status: 500 }
+      )
+    }
+
+    // Fetch the balance after the trigger runs.
+    const { data: updatedProfile, error: updatedProfileError } =
+      await supabase
+        .from('profiles')
+        .select('points_balance, total_points_earned')
+        .eq('id', userId)
+        .single()
+
+    if (updatedProfileError || !updatedProfile) {
+      return NextResponse.json(
+        {
+          success: true,
+          pointsAdded: pointsToAdd,
+          warning: 'Points were recorded, but the updated balance could not be retrieved.',
+        },
+        { status: 200 }
+      )
     }
 
     return NextResponse.json({
       success: true,
       pointsAdded: pointsToAdd,
-      newPointsBalance,
+      newPointsBalance: updatedProfile.points_balance,
+      newTotalPointsEarned: updatedProfile.total_points_earned,
     })
   } catch (error) {
+    console.error('ADD POINTS API ERROR:', error)
+
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Server error' },
+      {
+        error: error instanceof Error
+          ? error.message
+          : 'Server error',
+      },
       { status: 500 }
     )
   }
