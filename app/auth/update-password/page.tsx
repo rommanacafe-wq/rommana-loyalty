@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
@@ -9,8 +9,59 @@ export default function UpdatePasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
+  const [checkingSession, setCheckingSession] = useState(true)
 
   const router = useRouter()
+  const supabase = createClient()
+
+  useEffect(() => {
+    let mounted = true
+
+    async function verifyRecoverySession() {
+      try {
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession()
+
+        if (!mounted) return
+
+        if (error) {
+          setMessage('This reset link is invalid or expired. Please request a new one.')
+          setCheckingSession(false)
+          return
+        }
+
+        if (!session) {
+          const hash = window.location.hash || ''
+          const search = window.location.search || ''
+          const hasRecoveryToken =
+            hash.includes('access_token') ||
+            hash.includes('type=recovery') ||
+            search.includes('code=') ||
+            search.includes('type=recovery')
+
+          if (!hasRecoveryToken) {
+            setMessage('This reset link is missing a valid auth session. Please request a new reset email.')
+          } else {
+            setMessage('Preparing your secure reset session...')
+          }
+        }
+      } catch (error) {
+        if (mounted) {
+          setMessage('Unable to verify the password reset session. Please request a new reset email.')
+        }
+      } finally {
+        if (mounted) setCheckingSession(false)
+      }
+    }
+
+    verifyRecoverySession()
+
+    return () => {
+      mounted = false
+    }
+  }, [supabase])
 
   async function handleUpdate(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -23,7 +74,6 @@ export default function UpdatePasswordPage() {
     setLoading(true)
     setMessage('')
 
-    const supabase = createClient()
     const { error } = await supabase.auth.updateUser({ password })
 
     if (error) {
@@ -71,10 +121,10 @@ export default function UpdatePasswordPage() {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || checkingSession}
             className="w-full rounded-2xl bg-[#620b0b] py-3 font-medium text-white disabled:opacity-50"
           >
-            {loading ? 'Updating...' : 'Update password'}
+            {checkingSession ? 'Verifying reset link...' : loading ? 'Updating...' : 'Update password'}
           </button>
         </form>
 
@@ -82,6 +132,6 @@ export default function UpdatePasswordPage() {
           <p className="mt-4 text-sm text-[#4d3f38]">{message}</p>
         )}
       </div>
-      </div>
+    </div>
   )
 }
