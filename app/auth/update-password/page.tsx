@@ -19,35 +19,59 @@ export default function UpdatePasswordPage() {
 
     async function verifyRecoverySession() {
       try {
-        const {
-          data: { session },
-          error,
-        } = await supabase.auth.getSession()
+        const url = new URL(window.location.href)
+        const hashParams = new URLSearchParams(window.location.hash.slice(1))
+        const code = url.searchParams.get('code')
+        const accessToken = hashParams.get('access_token')
+        const refreshToken = hashParams.get('refresh_token')
+        const type = hashParams.get('type') ?? url.searchParams.get('type')
 
-        if (!mounted) return
+        if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code)
 
-        if (error) {
-          setMessage('This reset link is invalid or expired. Please request a new one.')
+          if (!mounted) return
+
+          if (error) {
+            setMessage('This reset link is invalid or expired. Please request a new reset email.')
+            setCheckingSession(false)
+            return
+          }
+
           setCheckingSession(false)
           return
         }
 
-        if (!session) {
-          const hash = window.location.hash || ''
-          const search = window.location.search || ''
-          const hasRecoveryToken =
-            hash.includes('access_token') ||
-            hash.includes('type=recovery') ||
-            search.includes('code=') ||
-            search.includes('type=recovery')
+        if (accessToken && refreshToken) {
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          })
 
-          if (!hasRecoveryToken) {
-            setMessage(
-              'This reset link is missing a valid auth session. Please request a new reset email.'
-            )
-          } else {
-            setMessage('Preparing your secure reset session...')
+          if (!mounted) return
+
+          if (error) {
+            setMessage('This reset link is invalid or expired. Please request a new reset email.')
+            setCheckingSession(false)
+            return
           }
+
+          setCheckingSession(false)
+          return
+        }
+
+        const {
+          data: { session },
+          error: sessionError,
+        } = await supabase.auth.getSession()
+
+        if (!mounted) return
+
+        if (sessionError || !session) {
+          setMessage(
+            type === 'recovery'
+              ? 'Preparing your secure reset session...'
+              : 'This reset link is missing a valid auth session. Please request a new reset email.'
+          )
         }
       } catch {
         if (mounted) {
@@ -78,10 +102,9 @@ export default function UpdatePasswordPage() {
     setLoading(true)
     setMessage('')
 
-    const { data: sessionData, error: sessionError } =
-      await supabase.auth.getSession()
+    const { data, error } = await supabase.auth.getSession()
 
-    if (sessionError || !sessionData.session) {
+    if (error || !data.session) {
       setMessage(
         'Your reset session is missing or expired. Please request a new password reset link.'
       )
@@ -89,10 +112,10 @@ export default function UpdatePasswordPage() {
       return
     }
 
-    const { error } = await supabase.auth.updateUser({ password })
+    const { error: updateError } = await supabase.auth.updateUser({ password })
 
-    if (error) {
-      setMessage(error.message)
+    if (updateError) {
+      setMessage(updateError.message)
       setLoading(false)
       return
     }
