@@ -76,9 +76,7 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error('ADD POINTS API ERROR:', error)
     return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : 'Server error',
-      },
+      { error: error instanceof Error ? error.message : 'Server error' },
       { status: 500 }
     )
   }
