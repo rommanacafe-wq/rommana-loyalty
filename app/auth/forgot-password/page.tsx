@@ -21,7 +21,7 @@ export default function ForgotPasswordPage() {
     const baseUrl = isProd ? 'https://rewards.rommana.ca' : 'http://localhost:3000'
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${baseUrl}/auth/update-password`,
+      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/update-password`,
     })
 
     if (error) {
