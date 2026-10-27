@@ -74,20 +74,7 @@ export function RewardCard({ reward, userPoints, userId }: RewardCardProps) {
       return
     }
 
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({
-        points_balance: userPoints - reward.points_required,
-      })
-      .eq('id', userId)
-
-    if (updateError) {
-      console.error('Profile update error:', updateError)
-      alert(`Profile update error: ${updateError.message}`)
-      setLoading(false)
-      return
-    }
-
+  
     setLoading(false)
     setSuccess(true)
     setRedemptionCode(code)
