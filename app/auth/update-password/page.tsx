@@ -42,14 +42,18 @@ export default function UpdatePasswordPage() {
             search.includes('type=recovery')
 
           if (!hasRecoveryToken) {
-            setMessage('This reset link is missing a valid auth session. Please request a new reset email.')
+            setMessage(
+              'This reset link is missing a valid auth session. Please request a new reset email.'
+            )
           } else {
             setMessage('Preparing your secure reset session...')
           }
         }
-      } catch (error) {
+      } catch {
         if (mounted) {
-          setMessage('Unable to verify the password reset session. Please request a new reset email.')
+          setMessage(
+            'Unable to verify the password reset session. Please request a new reset email.'
+          )
         }
       } finally {
         if (mounted) setCheckingSession(false)
@@ -73,6 +77,17 @@ export default function UpdatePasswordPage() {
 
     setLoading(true)
     setMessage('')
+
+    const { data: sessionData, error: sessionError } =
+      await supabase.auth.getSession()
+
+    if (sessionError || !sessionData.session) {
+      setMessage(
+        'Your reset session is missing or expired. Please request a new password reset link.'
+      )
+      setLoading(false)
+      return
+    }
 
     const { error } = await supabase.auth.updateUser({ password })
 
@@ -124,7 +139,11 @@ export default function UpdatePasswordPage() {
             disabled={loading || checkingSession}
             className="w-full rounded-2xl bg-[#620b0b] py-3 font-medium text-white disabled:opacity-50"
           >
-            {checkingSession ? 'Verifying reset link...' : loading ? 'Updating...' : 'Update password'}
+            {checkingSession
+              ? 'Verifying reset link...'
+              : loading
+                ? 'Updating...'
+                : 'Update password'}
           </button>
         </form>
 
